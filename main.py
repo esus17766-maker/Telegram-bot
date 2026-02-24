@@ -1,150 +1,119 @@
+import os
+import asyncio
 from telegram import (
     Update,
     BotCommand,
     InlineKeyboardButton,
-    InlineKeyboardMarkup,
+    InlineKeyboardMarkup
 )
 from telegram.ext import (
     ApplicationBuilder,
     CommandHandler,
-    CallbackQueryHandler,
-    MessageHandler,
     ContextTypes,
-    filters
+    CallbackQueryHandler
 )
-import nest_asyncio
-import asyncio
-from datetime import datetime
 
-nest_asyncio.apply()
-
-import os
+# ==============================
+# TOKEN (VARIABLE DE ENTORNO)
+# ==============================
 
 TOKEN = os.getenv("TOKEN")
 
-usuarios = {}
-mensajes = []
+# ==============================
+# COMANDOS DEL BOT
+# ==============================
 
-
-# Menú
-def menu_principal():
-    teclado = [
-        [
-            InlineKeyboardButton("📞 Contacto", callback_data="contacto"),
-            InlineKeyboardButton("🕒 Horario", callback_data="horario"),
-        ],
-        [
-            InlineKeyboardButton("📍 Ubicación", callback_data="ubicacion"),
-            InlineKeyboardButton("❓ Ayuda", callback_data="ayuda"),
-        ]
+async def set_commands(app):
+    commands = [
+        BotCommand("start", "Iniciar el bot"),
+        BotCommand("help", "Mostrar ayuda"),
+        BotCommand("menu", "Abrir menú"),
+        BotCommand("info", "Información del bot"),
     ]
-    return InlineKeyboardMarkup(teclado)
+    await app.bot.set_my_commands(commands)
 
+# ==============================
+# FUNCIONES DE COMANDOS
+# ==============================
 
-# /start
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await update.message.reply_text("Hola 👋 Soy tu bot profesional en Python.")
 
-    user = update.effective_user
-
-    usuarios[user.id] = {
-        "nombre": user.first_name,
-        "fecha": datetime.now().strftime("%Y-%m-%d %H:%M")
-    }
-
+async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(
-        f"Hola {user.first_name} 👋\n¿En qué te ayudo?",
-        reply_markup=menu_principal()
+        "Comandos disponibles:\n"
+        "/start - Iniciar\n"
+        "/help - Ayuda\n"
+        "/menu - Abrir menú\n"
+        "/info - Información"
     )
 
+async def info(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await update.message.reply_text(
+        "🤖 Bot creado con Python y desplegado en Railway."
+    )
 
-# Respuestas automáticas
-def respuesta_auto(texto):
+# ==============================
+# MENÚ CON BOTONES
+# ==============================
 
-    texto = texto.lower()
+async def menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    keyboard = [
+        [InlineKeyboardButton("📊 Estado", callback_data="estado")],
+        [InlineKeyboardButton("ℹ️ Info", callback_data="info")],
+    ]
 
-    if "hola" in texto:
-        return "Hola 👋 ¿Cómo estás?"
+    reply_markup = InlineKeyboardMarkup(keyboard)
 
-    if "precio" in texto or "costo" in texto:
-        return "Nuestros precios empiezan desde $100 MXN 💰"
+    await update.message.reply_text(
+        "Selecciona una opción:",
+        reply_markup=reply_markup
+    )
 
-    if "horario" in texto:
-        return "Atendemos de lunes a viernes, 9am a 6pm ⏰"
+# ==============================
+# MANEJO DE BOTONES
+# ==============================
 
-    if "direccion" in texto or "ubicacion" in texto:
-        return "Estamos en Mérida, Yucatán 📍"
-
-    if "gracias" in texto:
-        return "¡Con gusto! 😊"
-
-    return None
-
-
-# Guardar y responder
-async def manejar_mensaje(update: Update, context: ContextTypes.DEFAULT_TYPE):
-
-    user = update.effective_user
-    texto = update.message.text
-
-    mensajes.append({
-        "id": user.id,
-        "texto": texto,
-        "fecha": datetime.now().strftime("%H:%M")
-    })
-
-    respuesta = respuesta_auto(texto)
-
-    if respuesta:
-        await update.message.reply_text(respuesta)
-    else:
-        await update.message.reply_text(
-            "No entendí 😅 Usa el menú o escribe 'ayuda'."
-        )
-
-
-# Botones
-async def botones(update: Update, context: ContextTypes.DEFAULT_TYPE):
-
+async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
 
-    if query.data == "contacto":
-        texto = "📞 WhatsApp: 999-000-0000"
+    if query.data == "estado":
+        await query.edit_message_text(
+            "✅ El bot está funcionando correctamente en Railway."
+        )
 
-    elif query.data == "horario":
-        texto = "🕒 L-V: 9am a 6pm"
+    elif query.data == "info":
+        await query.edit_message_text(
+            "🤖 Bot avanzado con botones interactivos."
+        )
 
-    elif query.data == "ubicacion":
-        texto = "📍 Mérida, Yucatán"
-
-    elif query.data == "ayuda":
-        texto = "Escribe: hola, precio, horario, ubicación"
-
-    else:
-        texto = "Opción inválida"
-
-    await query.edit_message_text(texto)
-
+# ==============================
+# FUNCIÓN PRINCIPAL
+# ==============================
 
 async def main():
-
     app = ApplicationBuilder().token(TOKEN).build()
 
-    await app.bot.set_my_commands([
-        BotCommand("start", "Iniciar"),
-    ])
-
+    # Registrar comandos
     app.add_handler(CommandHandler("start", start))
+    app.add_handler(CommandHandler("help", help_command))
+    app.add_handler(CommandHandler("menu", menu))
+    app.add_handler(CommandHandler("info", info))
 
-    app.add_handler(
-        MessageHandler(filters.TEXT & ~filters.COMMAND, manejar_mensaje)
-    )
+    # Registrar botones
+    app.add_handler(CallbackQueryHandler(button_handler))
 
-    app.add_handler(CallbackQueryHandler(botones))
+    # Configurar comandos oficiales
+    await set_commands(app)
 
-    print("🤖 Bot automático activo...")
+    print("🚀 Bot funcionando correctamente...")
 
     await app.run_polling()
 
+# ==============================
+# EJECUCIÓN
+# ==============================
 
-asyncio.get_event_loop().run_until_complete(main())
+if __name__ == "__main__":
+    asyncio.run(main())
