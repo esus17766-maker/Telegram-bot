@@ -18,7 +18,9 @@ from datetime import datetime
 
 nest_asyncio.apply()
 
-TOKEN = "8730267318:AAHRhhemeVaEs0JHad0TPLi48gobyfxh7ls"
+import os
+
+TOKEN = os.getenv("TOKEN")
 
 usuarios = {}
 mensajes = []
